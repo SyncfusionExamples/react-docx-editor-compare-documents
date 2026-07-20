@@ -33,6 +33,7 @@ function App() {
       reader.onload = e => {
         const docData = e.target?.result as string | undefined;
         if (docData && editorRef.current?.documentEditor) {
+          editorRef.current.documentEditor.showRevisions = false;
           editorRef.current.documentEditor.open(docData);
         }
       };
@@ -54,6 +55,7 @@ function App() {
           alert("Failed to parse SFDT JSON string from backend.");
         }
         if (sfdtObject && editorRef.current?.documentEditor) {
+          editorRef.current.documentEditor.showRevisions = false;
           editorRef.current.documentEditor.open(sfdtObject);
         } else {
           alert("SFDT object missing or editor not ready.");
@@ -87,7 +89,8 @@ function App() {
     editorRef2: React.RefObject<DocumentEditorContainerComponent>,
     originalFile: File,
     revisedFile: File
-  ) {
+  ) 
+  {
     const formData = new FormData();
     formData.append("originalFile", originalFile);
     formData.append("revisedFile", revisedFile);
@@ -110,6 +113,7 @@ function App() {
       return;
     }
     if (sfdtObject && editorRef2.current?.documentEditor) {
+      editorRef2.current.documentEditor.showRevisions = true;
       editorRef2.current.documentEditor.open(sfdtObject);
     } else {
       alert("Compare API did not return SFDT document or editor2 not ready");
@@ -127,7 +131,6 @@ function App() {
     const editor1 = editorRef1.current?.documentEditor;
     const editor2 = editorRef2.current?.documentEditor;
     if (editor1 && editor2) {
-      debugger;
       editor1.fitPage('FitPageWidth');
       editor2.fitPage('FitPageWidth')
       editor1.viewChange = () => {
@@ -402,7 +405,20 @@ function App() {
           </div>
         </div>
       </div>
-
+      <div id="action-description">
+        <p>This example demonstrates Word document comparison in the Document Editor. Upload two documents and click "Compare" to view differences as tracked changes.</p>
+      </div>
+      <div id="description">
+        <p>This example showcases Word document comparison capabilities in the Document Editor, including:</p>
+        <ul>
+          <li>Upload and compare two versions of Word documents in DOCX or SFDT format.</li>
+          <li>Compare documents using the Syncfusion .NET Word Library (DocIO) on the server side.</li>
+          <li>View the comparison result in the Document Editor with differences highlighted as tracked changes.</li>
+          <li>Download the compared document with tracked changes preserved.</li>
+        </ul>
+        <p style={{ 'display': 'block' }}> More information about the document editor features can be found in this <a target="_blank" href="https://help.syncfusion.com/document-processing/word/word-library/net/word-document/compare-word-documents/">documentation section.</a>
+        </p>
+      </div>
     </div>
   );
 }
