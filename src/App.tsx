@@ -1,10 +1,11 @@
+import * as React from 'react';
 import { useRef, useEffect, useState } from 'react';
-import {
-  DocumentEditorContainerComponent
-} from '@syncfusion/ej2-react-documenteditor';
+import { DocumentEditorContainerComponent } from '@syncfusion/ej2-react-documenteditor';
 import { ButtonComponent } from '@syncfusion/ej2-react-buttons';
+//import './default.component.css';
+//import { updateSampleSection } from '../common/sample-base';
+import { originalDocument, revisedDocument } from './data';
 import './App.css';
-
 function App() {
   const editorRef1 = useRef<DocumentEditorContainerComponent | null>(null);
   const editorRef2 = useRef<DocumentEditorContainerComponent | null>(null);
@@ -13,16 +14,11 @@ function App() {
   const [revisedFile, setRevisedFile] = useState<File | null>(null);
   const [showResult, setShowResult] = useState<boolean>(true);
   const [compareClicked, setCompareClicked] = useState(false);
-  // Store whether editors have document open or are empty
-  const [editorsLoaded, setEditorsLoaded] = useState(false);
+  const [showRevisions, setShowRevisions] = useState(false);
 
   //Utilise the correct Service URL where the Import and CompareDocument Web APIs are hosted.
   //If you choose to use localhost, please update the URL below to 'http://localhost:62870/api/DocumentEditor/'; 
   let serviceUrl: string = 'https://document.syncfusion.com/web-services/docx-editor/api/documenteditor/'; 
-
-  // File input refs for hidden file input
-  const fileInputRef1 = useRef<HTMLInputElement>(null);
-  const fileInputRef2 = useRef<HTMLInputElement>(null);
 
   const openFileInEditor = async (
     file: File,
@@ -52,34 +48,47 @@ function App() {
         try {
           sfdtObject = JSON.parse(sfdtString);
         } catch (e) {
-          alert("Failed to parse SFDT JSON string from backend.");
+          alert("Failed to process the compared document due to no valid JSON. Please try again.");
         }
         if (sfdtObject && editorRef.current?.documentEditor) {
           editorRef.current.documentEditor.showRevisions = false;
           editorRef.current.documentEditor.open(sfdtObject);
         } else {
-          alert("SFDT object missing or editor not ready.");
+          alert("Unable to display the compared document. Please try again.");        
         }
       } catch (e) {
-        alert('Failed to open .docx file. Make sure your backend supports DOCX import. See server docs.');
+        alert('This Compare Documents demo supports only DOCX and SFDT file formats. Please select a valid DOCX or SFDT document and try again.');
       }
     }
   };
 
   const onCompare = async () => {
     setCompareClicked(false); // Reset to re-mount editors
-    setEditorsLoaded(false);  // Reset editors' loaded state
     setTimeout(async () => {
-      setCompareClicked(true);
-      setEditorsLoaded(true); // Editors will now load documents
-      if (showResult) {
-        if (originalFile) await openFileInEditor(originalFile, editorRef1);
-        if (originalFile && revisedFile) {
-          await loadComparedDocumentAndOpen(editorRef2 as React.RefObject<DocumentEditorContainerComponent>, originalFile, revisedFile);
+      if(originalFile != null && revisedFile != null){
+        const isOriginalSupported =
+          originalFile.name.endsWith('.sfdt') || originalFile.name.endsWith('.docx');
+
+        const isRevisedSupported =
+          revisedFile.name.endsWith('.sfdt') || revisedFile.name.endsWith('.docx');
+
+        if (isOriginalSupported && isRevisedSupported) {
+          setCompareClicked(true);
+          showHideWaitingIndicator(true);
+          if (showResult) {
+            if (originalFile) await openFileInEditor(originalFile, editorRef1);
+            if (originalFile && revisedFile) {
+              await loadComparedDocumentAndOpen(editorRef2 as React.RefObject<DocumentEditorContainerComponent>, originalFile, revisedFile);
+            }
+          } else {
+            if (originalFile) await openFileInEditor(originalFile, editorRef1);
+            if (revisedFile) await openFileInEditor(revisedFile, editorRef2);
+          }
+          showHideWaitingIndicator(false);
         }
-      } else {
-        if (originalFile) await openFileInEditor(originalFile, editorRef1);
-        if (revisedFile) await openFileInEditor(revisedFile, editorRef2);
+        else{
+          alert('This Compare Documents demo supports only DOCX and SFDT file formats. Please select a valid DOCX or SFDT document and try again.');
+        }     
       }
     }, 0);
   };
@@ -101,7 +110,7 @@ function App() {
       body: formData
     });
     if (!response.ok) {
-      alert('Failed to fetch compared document.');
+      alert("Failed to compare the selected documents. Please try again.");      
       return;
     }
     const sfdtString = await response.text();
@@ -109,16 +118,25 @@ function App() {
     try {
       sfdtObject = JSON.parse(sfdtString);
     } catch {
-      alert("Compare API did not return valid JSON.");
+      alert("The comparison could not be completed due to no valid JSON. Please try again.");
       return;
     }
     if (sfdtObject && editorRef2.current?.documentEditor) {
-      editorRef2.current.documentEditor.showRevisions = true;
+      editorRef2.current.documentEditor.showRevisions = false;
       editorRef2.current.documentEditor.open(sfdtObject);
     } else {
-      alert("Compare API did not return SFDT document or editor2 not ready");
+      alert("Unable to display the comparison result. Please try again.");    
     }
   }
+
+  const showHideWaitingIndicator = (show: boolean) => {
+    let waitingPopUp: HTMLElement | null = document.getElementById("waiting-popup");
+    let inActiveDiv: HTMLElement | null = document.getElementById("popup-overlay");
+    if(waitingPopUp && inActiveDiv){
+      inActiveDiv.style.display = show ? "block" : "none";
+      waitingPopUp.style.display = show ? "block" : "none";
+    }
+  };
 
   // Download the revised/result file (right editor)
   const onDownload = () => {
@@ -131,8 +149,9 @@ function App() {
     const editor1 = editorRef1.current?.documentEditor;
     const editor2 = editorRef2.current?.documentEditor;
     if (editor1 && editor2) {
-      editor1.fitPage('FitPageWidth');
-      editor2.fitPage('FitPageWidth')
+      editor1.open(JSON.stringify(originalDocument));
+      editor2.showRevisions = false;
+      editor2.open(JSON.stringify(revisedDocument));      
       editor1.viewChange = () => {
         const pos = editor1.selection.getScrollPosition();
         editor2.selection.setScrollPosition(pos);
@@ -142,284 +161,305 @@ function App() {
         editor1.selection.setScrollPosition(pos);
       };
     }
-  });
+ }, []);
+
+  const toggleRevisionPane = () => {
+    setShowRevisions(!showRevisions);
+    let editor2 = editorRef2.current?.documentEditor;
+    if (editor2) {
+      editor2.showRevisions = !showRevisions;
+    }
+  };
 
   return (
-    <div className="App" style={{ width: '100%' }}>
+    <div className="control-pane">
+      <div className="control-section" style={{ width: '100%' }}>
 
-      {/* Shared Container */}
-      <div
-        style={{
-          width: 760,
-          margin: '20px auto 10px auto'
-        }}
-      >
-        {/* Upload Row */}
-        <div style={{ display: 'flex', gap: 6 }}>
+        {/* Shared Container */}
+        <div
+          style={{
+            width: '760px',
+            margin: '10px auto'
+          }}>
+          {/* Upload Row */}
+          <div style={{ display: 'flex', gap: '6px' }}>
 
-          {/* Original */}
-          <div
-            style={{
-              width: 360,
-              background: '#FAFAFA',
-              borderRadius: 6,
-              padding: 14,
-              border: '1px dashed #ccc'
-            }}
-          >
-            {/* Top row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span>Original document</span>
-
-              <label
-                style={{
-                  padding: '4px 10px',
-                  border: '1px solid #ccc',
-                  borderRadius: 4,
-                  background: '#fff',
-                  cursor: 'pointer'
-                }}
-              >
-                Choose file
-                <input
-                  type="file"
-                  style={{ display: 'none' }}
-                  accept=".docx,.sfdt"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setOriginalFile(file);
-                      setCompareClicked(false);
-                      setEditorsLoaded(false);
-                    }
-                  }}
-                />
-              </label>
-            </div>
-
-            {/* Filename + Delete */}
+            {/* Original */}
             <div
               style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginTop: 6,
-                fontSize: 12,
-                color: '#666'
-              }}
-            >
-              <span>
-                {originalFile
-                  ? `${originalFile.name} (${Math.round(originalFile.size / 1024)} KB)`
-                  : 'File supports sfdt, docx'}
-              </span>
+                width: '360px',
+                borderRadius: 6,
+                padding: 14,
+                border: '1px dashed #ccc'
+              }}>
+              {/* Top row */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span>Original document</span>
 
-              {originalFile && (
-                <span
-                  className="e-icons e-trash"
-                  onClick={() => setOriginalFile(null)}
+                <label
                   style={{
+                    padding: '4px 10px',
+                    border: '1px solid #ccc',
+                    borderRadius: 4,
                     cursor: 'pointer'
-                  }}
-                  title="Remove file"
-                />
-              )}
-            </div>
-          </div>
+                  }}>
+                  Choose file
+                  <input
+                    type="file"
+                    style={{ display: 'none' }}
+                    accept=".docx,.sfdt"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setOriginalFile(file);
+                        setCompareClicked(false);
+                      }
+                    }}
+                  />
+                </label>
+              </div>
 
-          {/* Revised */}
-          <div
-            style={{
-              width: 360,
-              background: '#FAFAFA',
-              borderRadius: 6,
-              padding: 14,
-              border: '1px dashed #ccc'
-            }}
-          >
-            {/* Top row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span>Revised document</span>
-
-              <label
+              {/* Filename + Delete */}
+              <div
                 style={{
-                  padding: '4px 10px',
-                  border: '1px solid #ccc',
-                  borderRadius: 4,
-                  background: '#fff',
-                  cursor: 'pointer'
-                }}
-              >
-                Choose file
-                <input
-                  type="file"
-                  style={{ display: 'none' }}
-                  accept=".docx,.sfdt"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setRevisedFile(file);
-                      setCompareClicked(false);
-                      setEditorsLoaded(false);
-                    }
-                  }}
-                />
-              </label>
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: 6,
+                  fontSize: 12,
+                  color: '#666'
+                }}>
+                <span>
+                  {originalFile
+                    ? `${originalFile.name} (${Math.round(originalFile.size / 1024)} KB)`
+                    : 'Supported formats: SFDT, DOCX'}
+                </span>
+
+                {originalFile && (
+                  <span
+                    className="e-icons e-trash"
+                    onClick={() => setOriginalFile(null)}
+                    style={{
+                      cursor: 'pointer'
+                    }}
+                    title="Remove file"
+                  />
+                )}
+              </div>
             </div>
 
-            {/* Filename + Delete */}
+            {/* Revised */}
             <div
               style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginTop: 6,
-                fontSize: 12,
-                color: '#666'
-              }}
-            >
-              <span>
-                {revisedFile
-                  ? `${revisedFile.name} (${Math.round(revisedFile.size / 1024)} KB)`
-                  : 'File supports sfdt, docx'}
-              </span>
+                width: 360,
+                borderRadius: 6,
+                padding: 14,
+                border: '1px dashed #ccc'
+              }}>
+              {/* Top row */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span>Revised document</span>
 
-              {revisedFile && (
-                <span
-                  className="e-icons e-trash"
-                  onClick={() => setRevisedFile(null)}
+                <label
                   style={{
+                    padding: '4px 10px',
+                    border: '1px solid #ccc',
+                    borderRadius: 4,
                     cursor: 'pointer'
-                  }}
-                  title="Remove file"
-                />
-              )}
+                  }}>
+                  Choose file
+                  <input
+                    type="file"
+                    style={{ display: 'none' }}
+                    accept=".docx,.sfdt"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setRevisedFile(file);
+                        setCompareClicked(false);
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+
+              {/* Filename + Delete */}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: 6,
+                  fontSize: 12,
+                  color: '#666'
+                }}>
+                <span>
+                  {revisedFile
+                    ? `${revisedFile.name} (${Math.round(revisedFile.size / 1024)} KB)`
+                    : 'Supported formats: SFDT, DOCX'}
+                </span>
+
+                {revisedFile && (
+                  <span
+                    className="e-icons e-trash"
+                    onClick={() => setRevisedFile(null)}
+                    style={{
+                      cursor: 'pointer'
+                    }}
+                    title="Remove file"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Controls */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginTop: 12
+            }}>
+            {/* Checkbox */}
+            <div>
+              <input
+                type="checkbox"
+                checked={showResult}
+                onChange={(e) => setShowResult(e.target.checked)}
+                style={{ marginRight: 6 }}
+              />
+              <span>Show comparison results with tracked changes</span>
+            </div>
+
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: 10, marginRight: 32 }}>
+              <ButtonComponent
+                cssClass="e-primary"
+                disabled={!originalFile || !revisedFile}
+                onClick={onCompare}>
+                Compare
+              </ButtonComponent>
+
+              <ButtonComponent
+                cssClass="e-outline e-flat e-primary"
+                disabled={!compareClicked}
+                onClick={onDownload}
+                iconCss="e-icons e-download">
+                Downlad Result Document
+              </ButtonComponent>
             </div>
           </div>
         </div>
 
-        {/* Controls */}
+        {/* Editors */}
         <div
           style={{
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginTop: 12
-          }}
-        >
-          {/* Checkbox */}
-          <div>
-            <input
-              type="checkbox"
-              checked={showResult}
-              onChange={(e) => setShowResult(e.target.checked)}
-              style={{ marginRight: 6 }}
-            />
-            <span>Show comparison results with tracked changes</span>
+            gap: 6,
+            height: '600px',
+            padding: '0px 10px'
+          }}>
+          {/* Left Editor */}
+          <div
+            style={{
+              width: '50%',
+              display: 'flex',
+              flexDirection: 'column',
+              border: '1px solid #ddd',
+              overflow: 'hidden'
+            }}>
+            <div className="e-de-ctn-title" style={{ padding: '8px', fontWeight: 600 }}>
+              Original Document
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <DocumentEditorContainerComponent
+                id="editor1"
+                ref={editorRef1}
+                serviceUrl={serviceUrl}
+                height="560px"
+                width="100%"
+                enableToolbar={false}
+                showPropertiesPane={false}
+              />
+            </div>
           </div>
 
-          {/* Buttons */}
-          <div style={{ display: 'flex', gap: 10 }}>
-            <ButtonComponent
-              cssClass="e-primary"
-              disabled={!originalFile || !revisedFile}
-              onClick={onCompare}
-            >
-              Compare
-            </ButtonComponent>
+          {/* Right Editor */}
+          <div
+            style={{
+              width: '50%',
+              display: 'flex',
+              flexDirection: 'column',
+              border: '1px solid #ddd',
+              overflow: 'hidden'
+            }}>
+            <div className="e-de-ctn-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+              <div style={{ float: 'left', padding: '8px', fontWeight: 600, flex: 1  }}>
+                {showResult
+                  ? 'Result Document (with tracked changes)'
+                  : 'Revised Document'}
+              </div>
+              <ButtonComponent style={{ float: 'right', fontWeight: 400, 
+                      background: 'transparent', boxShadow: 'none',
+                      borderColor: 'transparent', borderRadius: '0px',
+                      color: 'inherit', fontSize: '12px'}}
+                  className='e-de-ctn-title'
+                  title="Show/Hide Revisions Pane"
+                  onClick={toggleRevisionPane}>
+                  <span className='e-icons e-eye'></span>
+                  {showRevisions ? ' Hide Review Pane' : ' Show Review Pane'}
+              </ButtonComponent>
+            </div>
 
-            <ButtonComponent
-              cssClass="e-outline e-flat e-primary"
-              disabled={!compareClicked}
-              onClick={onDownload}
-              iconCss="e-icons e-download"
-            >
-              Results
-            </ButtonComponent>
-          </div>
-        </div>
-      </div>
-
-      {/* Editors */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 6,
-          height: '600px',
-          padding: '10px'
-        }}
-      >
-        {/* Left Editor */}
-        <div
-          style={{
-            width: '50%',
-            display: 'flex',
-            flexDirection: 'column',
-            border: '1px solid #ddd',
-            overflow: 'hidden'
-          }}
-        >
-          <div className="e-de-ctn-title" style={{ padding: '8px', fontWeight: 600 }}>
-            Original Document
-          </div>
-
-          <div style={{ flex: 1 }}>
-            <DocumentEditorContainerComponent
-              id="editor1"
-              ref={editorRef1}
-              serviceUrl={serviceUrl}
-              height="100%"
-              width="100%"
-              enableToolbar={false}
-              showPropertiesPane={false}
-            />
+            <div style={{ flex: 1 }}>
+              <DocumentEditorContainerComponent
+                id="editor2"
+                ref={editorRef2}
+                serviceUrl={serviceUrl}
+                height="560px"
+                width="100%"
+                enableToolbar={false}
+                showPropertiesPane={false}
+              />
+            </div>
           </div>
         </div>
 
-        {/* Right Editor */}
-        <div
-          style={{
-            width: '50%',
-            display: 'flex',
-            flexDirection: 'column',
-            border: '1px solid #ddd',
-            overflow: 'hidden'
-          }}
-        >
-          <div className="e-de-ctn-title" style={{ padding: '8px', fontWeight: 600 }}>
-            {showResult
-              ? 'Result Document (with tracked changes)'
-              : 'Revised Document'}
-          </div>
-
-          <div style={{ flex: 1 }}>
-            <DocumentEditorContainerComponent
-              id="editor2"
-              ref={editorRef2}
-              serviceUrl={serviceUrl}
-              height="100%"
-              width="100%"
-              enableToolbar={false}
-              showPropertiesPane={false}
+        {/* Loading Progress */}
+        <div className="overlay" id="popup-overlay"></div>
+        <div id="waiting-popup">
+          <svg className="circular" height="40" width="40">
+            <circle
+              className="circle-path"
+              cx="25"
+              cy="25"
+              r="20"
+              fill="none"
+              strokeWidth="6"
+              strokeMiterlimit="10" 
             />
-          </div>
+          </svg>
+        </div>    
+    
+        {/* Sample Description */}
+        <div id="action-description">
+          <p>This example demonstrates Word document comparison in the Document Editor. Upload two documents and click "Compare" to view differences as tracked changes.</p>
         </div>
-      </div>
-      <div id="action-description">
-        <p>This example demonstrates Word document comparison in the Document Editor. Upload two documents and click "Compare" to view differences as tracked changes.</p>
-      </div>
-      <div id="description">
-        <p>This example showcases Word document comparison capabilities in the Document Editor, including:</p>
-        <ul>
-          <li>Upload and compare two versions of Word documents in DOCX or SFDT format.</li>
-          <li>Compare documents using the Syncfusion .NET Word Library (DocIO) on the server side.</li>
-          <li>View the comparison result in the Document Editor with differences highlighted as tracked changes.</li>
-          <li>Download the compared document with tracked changes preserved.</li>
-        </ul>
-        <p style={{ 'display': 'block' }}> More information about the document editor features can be found in this <a target="_blank" href="https://help.syncfusion.com/document-processing/word/word-library/net/word-document/compare-word-documents/">documentation section.</a>
-        </p>
-      </div>
-    </div>
+        <div id="description">
+          <p>This example showcases Word document comparison capabilities in the Document Editor, including:</p>
+          <ul>
+            <li>Upload and compare two versions of Word documents in DOCX or SFDT format.</li>
+            <li>Compare documents using the Syncfusion .NET Word Library (DocIO) on the server side.</li>
+            <li>View the comparison result in the Document Editor with differences highlighted as tracked changes.</li>
+            <li>Download the compared document with tracked changes preserved.</li>
+          </ul>
+          <p style={{ 'display': 'block' }}> More information about the document editor features can be found in this <a target="_blank" href="https://help.syncfusion.com/document-processing/word/word-library/net/word-document/compare-word-documents/">documentation section.</a>
+          </p>
+        </div>
+      </div>          
+    </div>   
   );
 }
 
