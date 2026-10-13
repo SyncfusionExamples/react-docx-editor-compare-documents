@@ -2,10 +2,9 @@ import * as React from 'react';
 import { useRef, useEffect, useState } from 'react';
 import { DocumentEditorContainerComponent } from '@syncfusion/ej2-react-documenteditor';
 import { ButtonComponent } from '@syncfusion/ej2-react-buttons';
-//import './default.component.css';
-//import { updateSampleSection } from '../common/sample-base';
 import { originalDocument, revisedDocument } from './data';
 import './App.css';
+
 function App() {
   const editorRef1 = useRef<DocumentEditorContainerComponent | null>(null);
   const editorRef2 = useRef<DocumentEditorContainerComponent | null>(null);
@@ -64,6 +63,7 @@ function App() {
 
   const onCompare = async () => {
     setCompareClicked(false); // Reset to re-mount editors
+    setShowRevisions(false);
     setTimeout(async () => {
       if(originalFile != null && revisedFile != null){
         const isOriginalSupported =
@@ -357,7 +357,7 @@ function App() {
           style={{
             display: 'flex',
             gap: 6,
-            height: '600px',
+            height: 'calc(100vh - 180px)',
             padding: '0px 10px'
           }}>
           {/* Left Editor */}
@@ -378,7 +378,7 @@ function App() {
                 id="editor1"
                 ref={editorRef1}
                 serviceUrl={serviceUrl}
-                height="560px"
+                height="100%"
                 width="100%"
                 enableToolbar={false}
                 showPropertiesPane={false}
@@ -401,16 +401,18 @@ function App() {
                   ? 'Result Document (with tracked changes)'
                   : 'Revised Document'}
               </div>
-              <ButtonComponent style={{ float: 'right', fontWeight: 400, 
-                      background: 'transparent', boxShadow: 'none',
-                      borderColor: 'transparent', borderRadius: '0px',
-                      color: 'inherit', fontSize: '12px'}}
-                  className='e-de-ctn-title'
-                  title="Show/Hide Revisions Pane"
-                  onClick={toggleRevisionPane}>
-                  <span className='e-icons e-eye'></span>
-                  {showRevisions ? ' Hide Review Pane' : ' Show Review Pane'}
-              </ButtonComponent>
+              {showResult &&
+                <ButtonComponent style={{ float: 'right', fontWeight: 400, 
+                        background: 'transparent', boxShadow: 'none',
+                        borderColor: 'transparent', borderRadius: '0px',
+                        color: 'inherit', fontSize: '12px'}}
+                    className='e-de-ctn-title'
+                    title="Show/Hide Revisions Pane"
+                    onClick={toggleRevisionPane}>
+                    <span className='e-icons e-eye'></span>
+                    {showRevisions ? ' Hide Review Pane' : ' Show Review Pane'}
+                </ButtonComponent>
+              }
             </div>
 
             <div style={{ flex: 1 }}>
@@ -418,7 +420,7 @@ function App() {
                 id="editor2"
                 ref={editorRef2}
                 serviceUrl={serviceUrl}
-                height="560px"
+                height="100%"
                 width="100%"
                 enableToolbar={false}
                 showPropertiesPane={false}
@@ -441,22 +443,6 @@ function App() {
               strokeMiterlimit="10" 
             />
           </svg>
-        </div>    
-    
-        {/* Sample Description */}
-        <div id="action-description">
-          <p>This example demonstrates Word document comparison in the Document Editor. Upload two documents and click "Compare" to view differences as tracked changes.</p>
-        </div>
-        <div id="description">
-          <p>This example showcases Word document comparison capabilities in the Document Editor, including:</p>
-          <ul>
-            <li>Upload and compare two versions of Word documents in DOCX or SFDT format.</li>
-            <li>Compare documents using the Syncfusion .NET Word Library (DocIO) on the server side.</li>
-            <li>View the comparison result in the Document Editor with differences highlighted as tracked changes.</li>
-            <li>Download the compared document with tracked changes preserved.</li>
-          </ul>
-          <p style={{ 'display': 'block' }}> More information about the document editor features can be found in this <a target="_blank" href="https://help.syncfusion.com/document-processing/word/word-library/net/word-document/compare-word-documents/">documentation section.</a>
-          </p>
         </div>
       </div>          
     </div>   

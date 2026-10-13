@@ -4,8 +4,6 @@
 
 This repository contains a React application that demonstrates how to compare two Word documents using the Syncfusion<sup style="font-size:70%">&reg;</sup> [React DOCX Editor](https://www.syncfusion.com/docx-editor-sdk/react-docx-editor?utm_source=github&utm_medium=listing&utm_campaign=github-github-documenteditor-examples) (Document Editor). The sample allows users to upload an original and a revised document, compare them using the Document Editor web service, and view the comparison results with revision tracking.
 
-The application uses the publicly hosted Syncfusion Document Editor Web API service for document import and comparison.
-
 ### Features
 
 - Upload an original Word document.
@@ -37,7 +35,7 @@ This sample is already configured to use the online Syncfusion Document Editor s
 
 ```ts
 const serviceUrl =
-  "https://document.syncfusion.com/web-services/docx-editor/api/documenteditor/";
+  "https://document.syncfusion.com/web-services/docx-editor/api/documenteditor/"; //only for demo purpose.
 ```
 
 Since the application consumes the hosted web service, you do **not** need to download, build, or run any ASP.NET Core Web API project.
@@ -90,7 +88,7 @@ http://localhost:3000
 
 <p align="center">
   <img
-    src="asset/compare-documents-demo-react-docx-editor.gif"
+    src="images/compare-documents-demo-react-docx-editor.gif"
     alt="React DOCX Editor Compare Documents Demo"
     width="1000" />
 </p>
@@ -154,4 +152,4 @@ Request new feature through [Syncfusion® feedback portal](https://www.syncfusi
 
 # License
 
-This is a commercial product and requires a paid license for possession or use Syncfusion's licensed software, including this component, is subject to the terms and conditions of [Syncfusion's EULA](https://www.syncfusion.com/license/studio/34.1.29/syncfusion_essential_studio_eula.pdf?utm_source=github&utm_medium=listing&utm_campaign=github-github-documenteditor-examples). You can purchase a licnense [here](https://www.syncfusion.com/sales/products?utm_source=github&utm_medium=listing&utm_campaign=github-github-documenteditor-examples) or start a free 30\-day trial [here](https://www.syncfusion.com/account/manage-trials/start-trials?utm_source=github&utm_medium=listing&utm_campaign=github-github-documenteditor-examples). 
+This is a commercial product and requires a paid license for possession or use Syncfusion's licensed software, including this component, is subject to the terms and conditions of [Syncfusion's EULA](https://www.syncfusion.com/license/studio/syncfusion_essential_studio_eula.pdf?utm_source=github&utm_medium=listing&utm_campaign=github-github-documenteditor-examples). You can purchase a licnense [here](https://www.syncfusion.com/sales/products?utm_source=github&utm_medium=listing&utm_campaign=github-github-documenteditor-examples) or start a free 30\-day trial [here](https://www.syncfusion.com/account/manage-trials/start-trials?utm_source=github&utm_medium=listing&utm_campaign=github-github-documenteditor-examples). 
